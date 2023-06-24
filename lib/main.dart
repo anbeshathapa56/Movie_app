@@ -4,6 +4,9 @@ import 'package:movie_app/widgets/toprated_movies.dart';
 import 'package:movie_app/widgets/trending_movies.dart';
 import 'package:movie_app/widgets/tv_movies.dart';
 import 'package:tmdb_api/tmdb_api.dart';
+import 'package:flutter/services.dart';
+
+import 'description.dart';
 
 void main() => runApp(new MyApp());
 
@@ -29,6 +32,24 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  TextEditingController searchController = TextEditingController();
+  List searchedMovies = [];
+  void searchMovies(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        searchedMovies.clear();
+      });
+      return;
+    }
+
+    setState(() {
+      searchedMovies = topratedmovies.where((movie) {
+        final title = movie['title'] ?? '';
+        return title.toLowerCase().startsWith(query.toLowerCase());
+      }).toList();
+    });
+  }
+
   List trendingmovies = [];
   List topratedmovies = [];
   List tv = [];
@@ -76,6 +97,112 @@ class _HomeState extends State<Home> {
       ),
       body: ListView(
         children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: TextField(
+              controller: searchController,
+              style: TextStyle(
+                color: Colors.black,
+              ),
+              onChanged: (value) {
+                searchMovies(value);
+              },
+              decoration: InputDecoration(
+                  border: InputBorder.none,
+                  filled: true,
+                  fillColor: Colors.white,
+                  suffixIcon: Icon(
+                    Icons.search,
+                    color: Colors.grey,
+                  )),
+            ),
+          ),
+          SizedBox(height: 16),
+          if (searchedMovies.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ModifiedText(
+                  text: 'Search Results',
+                  size: 23,
+                  color: Colors.white,
+                ),
+                SizedBox(height: 20),
+                Container(
+                  height: 270,
+                  child: ListView.builder(
+                    itemCount: searchedMovies.length,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (context, index) {
+                      final movie = searchedMovies[index];
+                      final title = movie['title'];
+                      final overview = movie['overview'];
+                      final backdropPath = movie['backdrop_path'];
+                      final posterPath = movie['poster_path'];
+                      final voteAverage = movie['vote_average'];
+                      final releaseDate = movie['release_date'];
+                      // Using the movie details to build the search result widget
+
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Description(
+                                name: title != null ? title : 'No Title',
+                                description: overview != null
+                                    ? overview
+                                    : 'No Description',
+                                bannerurl: backdropPath != null
+                                    ? 'https://image.tmdb.org/t/p/w500$backdropPath'
+                                    : '',
+                                posterurl: posterPath != null
+                                    ? 'https://image.tmdb.org/t/p/w500$posterPath'
+                                    : '',
+                                vote: voteAverage != null
+                                    ? voteAverage.toString()
+                                    : '0.0',
+                                launch_on: releaseDate != null
+                                    ? releaseDate
+                                    : 'No Release Date',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(5),
+                          width: 140,
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 133.33,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  image: DecorationImage(
+                                    image: NetworkImage(
+                                        'https://image.tmdb.org/t/p/w500' +
+                                            posterPath),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              Container(
+                                child: ModifiedText(
+                                  text: title != null ? title : 'Loading',
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth >= 600) {
